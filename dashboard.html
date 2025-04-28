@@ -1,0 +1,444 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Interactive Health Dashboard</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
+  <script src="https://cdn.jsdelivr.net/npm/countup.js@2.0.7/dist/countUp.umd.js"></script>
+  <script src="https://unpkg.com/@lottiefiles/lottie-player@latest/dist/lottie-player.js"></script>
+  <script src="https://unpkg.com/@popperjs/core@2"></script>
+  <script src="https://unpkg.com/tippy.js@6/dist/tippy-bundle.umd.min.js"></script>
+  <link rel="stylesheet" href="https://unpkg.com/tippy.js@6/animations/scale.css" />
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    body {
+      font-family: 'Inter', Arial, sans-serif;
+      background: linear-gradient(135deg, #232946 0%, #4f8cff 100%);
+      color: #f7f7fa;
+      height: 100vh;
+      width: 100vw;
+      overflow-y: auto;
+    }
+    .dashboard-layout {
+      display: flex;
+      min-height: 100vh;
+    }
+    .sidebar {
+      width: 220px;
+      background: rgba(36,40,54,0.85);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 32px 0;
+      gap: 32px;
+      box-shadow: 0 0 32px #4f8cff22;
+      position: relative;
+      z-index: 2;
+    }
+    .sidebar h2 {
+      font-size: 1.5rem;
+      font-weight: 700;
+      margin-bottom: 32px;
+      letter-spacing: 1px;
+      color: #00ffd0;
+    }
+    .nav {
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+      width: 100%;
+      align-items: center;
+    }
+    .nav-btn {
+      background: none;
+      border: none;
+      color: #fff;
+      font-size: 1.2rem;
+      font-weight: 600;
+      padding: 12px 32px;
+      border-radius: 12px;
+      cursor: pointer;
+      transition: background 0.2s, color 0.2s;
+      width: 80%;
+      text-align: left;
+    }
+    .nav-btn.active, .nav-btn:hover {
+      background: #00ffd0;
+      color: #232946;
+      box-shadow: 0 0 16px #00ffd0aa;
+    }
+    .main-content {
+      flex: 1;
+      padding: 40px 5vw 40px 5vw;
+      display: flex;
+      flex-direction: column;
+      align-items: stretch;
+      background: linear-gradient(120deg, #232946 60%, #4f8cff 100%);
+      min-height: 100vh;
+      overflow-y: auto;
+      max-height: 100vh;
+    }
+    .greeting {
+      font-size: 2.2rem;
+      font-weight: 700;
+      margin-bottom: 18px;
+      letter-spacing: 1px;
+      color: #fff;
+    }
+    .patient-info {
+      margin-bottom: 18px;
+      font-size: 1.1rem;
+    }
+    .status-badges {
+      display: flex;
+      gap: 1.5vw;
+      margin-bottom: 18px;
+    }
+    .status-badge {
+      display: flex;
+      align-items: center;
+      gap: 0.5em;
+      font-size: 1rem;
+      font-weight: 600;
+      border-radius: 16px;
+      padding: 0.3em 1em;
+      background: rgba(0,255,208,0.13);
+      color: #00ffd0;
+      min-width: 90px;
+      justify-content: center;
+      box-shadow: 0 2px 8px 0 rgba(0,255,208,0.08);
+    }
+    .status-badge.hr { background: rgba(79,140,255,0.13); color: #4f8cff; }
+    .status-badge.spo2 { background: rgba(0,255,208,0.13); color: #00ffd0; }
+    .status-badge.temp { background: rgba(247,184,1,0.13); color: #f7b801; }
+    .metrics-grid {
+      display: flex;
+      gap: 32px;
+      flex-wrap: wrap;
+      margin-bottom: 32px;
+      justify-content: center;
+    }
+    .metric-card {
+      background: rgba(255,255,255,0.10);
+      box-shadow: 0 8px 32px 0 rgba(31,38,135,0.18);
+      border-radius: 20px;
+      border: 1.5px solid rgba(255,255,255,0.18);
+      backdrop-filter: blur(16px);
+      min-width: 260px;
+      max-width: 320px;
+      flex: 1 1 260px;
+      padding: 28px 24px 20px 24px;
+      text-align: center;
+      position: relative;
+      transition: transform 0.2s, box-shadow 0.2s;
+      cursor: pointer;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    .metric-card:hover {
+      transform: translateY(-6px) scale(1.03);
+      box-shadow: 0 0 32px 8px #00ffd0aa, 0 8px 32px 0 rgba(31,38,135,0.18);
+    }
+    .metric-icon {
+      margin-bottom: 8px;
+    }
+    .metric-label {
+      font-size: 1.1rem;
+      color: #bfc9d9;
+      margin-bottom: 6px;
+    }
+    .metric-value {
+      font-size: 2.6rem;
+      font-weight: 700;
+      color: #fff;
+      margin-bottom: 2px;
+      min-height: 40px;
+      letter-spacing: 1px;
+    }
+    .metric-unit {
+      font-size: 1rem;
+      color: #00ffd0;
+      margin-left: 4px;
+    }
+    .sparkline-canvas {
+      width: 100px !important;
+      height: 32px !important;
+      margin: 8px 0 0 0;
+    }
+    .charts-container {
+      display: flex;
+      gap: 32px;
+      margin-bottom: 32px;
+      justify-content: center;
+    }
+    .main-chart-card, .gauge-card {
+      background: rgba(255,255,255,0.10);
+      box-shadow: 0 8px 32px 0 rgba(31,38,135,0.18);
+      border-radius: 20px;
+      border: 1.5px solid rgba(255,255,255,0.18);
+      backdrop-filter: blur(16px);
+      padding: 24px 24px 16px 24px;
+      min-width: 320px;
+      max-width: 480px;
+      flex: 1 1 320px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    .main-chart-title {
+      font-size: 1.3rem;
+      font-weight: 600;
+      margin-bottom: 18px;
+      color: #fff;
+      letter-spacing: 1px;
+    }
+    @media (max-width: 1200px) {
+      .main-chart-card, .gauge-card { max-width: 100vw; }
+      .charts-container { flex-direction: column; gap: 18px; }
+      .metric-card { min-width: 180px; }
+    }
+    @media (max-width: 900px) {
+      .dashboard-layout { flex-direction: column; }
+      .sidebar { flex-direction: row; width: 100vw; height: 70px; padding: 0 8px; }
+      .main-content { padding: 24px 2vw; }
+      .metrics-grid { flex-direction: column; gap: 16px; }
+      .main-chart-card, .gauge-card { padding: 16px 4px; }
+    }
+    @media (max-width: 600px) {
+      .main-content { padding: 8px 2vw; }
+      .metric-card { padding: 16px 8px; }
+      .main-chart-card, .gauge-card { padding: 8px 2px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="dashboard-layout">
+    <aside class="sidebar">
+      <h2>Vitals</h2>
+      <nav class="nav">
+        <button class="nav-btn active">Dashboard</button>
+        <button class="nav-btn">Trends</button>
+      </nav>
+    </aside>
+    <main class="main-content">
+      <div class="greeting">👋 Welcome back!</div>
+      <div class="patient-info" style="margin-bottom:18px; font-size:1.1rem;">
+        <span><strong>Patient ID:</strong> <span id="patientId">--</span></span>
+        <span style="margin-left:2em;"><strong>Name:</strong> <span id="patientName">--</span></span>
+        <span style="margin-left:2em;"><strong>Gender:</strong> <span id="gender">--</span></span>
+        <span style="margin-left:2em;"><strong>Age:</strong> <span id="age">--</span></span>
+        <span style="margin-left:2em;"><strong>Blood Pressure:</strong> <span id="bpValue">--</span></span>
+        <br>
+        <span><strong>Timestamp:</strong> <span id="timestamp">--</span></span>
+      </div>
+      <div class="status-badges">
+        <div class="status-badge hr" id="hrStatus">Normal</div>
+        <div class="status-badge spo2" id="spo2Status">Normal</div>
+        <div class="status-badge temp" id="tempStatus">Normal</div>
+      </div>
+      <div class="metrics-grid">
+        <div class="metric-card" style="border-left: 6px solid #4f8cff;">
+          <lottie-player src="https://assets10.lottiefiles.com/packages/lf20_j1adxtyb.json" background="transparent" speed="1" style="width: 48px; height: 48px; margin-bottom: 4px;" loop autoplay></lottie-player>
+          <div class="metric-label" data-tippy-content="Current heart rate in beats per minute">Heart Rate</div>
+          <div class="metric-value"><span id="hrValue">--</span><span class="metric-unit">BPM</span></div>
+          <canvas id="hrSparkline" class="sparkline-canvas"></canvas>
+        </div>
+        <div class="metric-card" style="border-left: 6px solid #00ffd0;">
+          <lottie-player src="https://assets10.lottiefiles.com/packages/lf20_2glqweqs.json" background="transparent" speed="1" style="width: 48px; height: 48px; margin-bottom: 4px;" loop autoplay></lottie-player>
+          <div class="metric-label" data-tippy-content="Current blood oxygen saturation">SpO₂</div>
+          <div class="metric-value"><span id="spo2Value">--</span><span class="metric-unit">%</span></div>
+          <canvas id="spo2Sparkline" class="sparkline-canvas"></canvas>
+        </div>
+        <div class="metric-card" style="border-left: 6px solid #f7b801;">
+          <lottie-player src="https://assets10.lottiefiles.com/packages/lf20_4kx2q32n.json" background="transparent" speed="1" style="width: 48px; height: 48px; margin-bottom: 4px;" loop autoplay></lottie-player>
+          <div class="metric-label" data-tippy-content="Current body temperature in Celsius">Temperature</div>
+          <div class="metric-value"><span id="tempValue">--</span><span class="metric-unit">°C</span></div>
+          <canvas id="tempSparkline" class="sparkline-canvas"></canvas>
+        </div>
+      </div>
+      <div class="charts-container">
+        <div class="main-chart-card">
+          <div class="main-chart-title">Health Trends</div>
+          <div id="apexTrendsChart" style="width: 100%; height: 220px;"></div>
+        </div>
+        <div class="gauge-card">
+          <div class="main-chart-title">Live Gauges</div>
+          <div id="apexGaugeHR" style="width: 180px; height: 180px; margin: 0 auto 18px auto;"></div>
+          <div id="apexGaugeSpO2" style="width: 180px; height: 180px; margin: 0 auto;"></div>
+        </div>
+      </div>
+    </main>
+  </div>
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      tippy('.metric-label', { animation: 'scale', theme: 'light-border' });
+      function animateNumber(id, value, decimals=1) {
+        const el = document.getElementById(id);
+        if (!el) return;
+        const prev = parseFloat(el.textContent.replace(/[^0-9.\-]/g, "")) || 0;
+        if (window.CountUp) {
+          const countUp = new window.CountUp(id, value, { startVal: prev, decimalPlaces: decimals, duration: 0.7 });
+          countUp.start();
+        } else {
+          el.textContent = value.toFixed(decimals);
+        }
+      }
+      let hrHistory = Array(30).fill(75);
+      let spo2History = Array(30).fill(98);
+      let tempHistory = Array(30).fill(36.7);
+      // Main trends chart
+      const apexTrendsChart = new ApexCharts(document.querySelector("#apexTrendsChart"), {
+        chart: { type: 'line', height: 220, toolbar: { show: false }, animations: { enabled: true } },
+        series: [
+          { name: 'Heart Rate', data: hrHistory, color: '#4f8cff' },
+          { name: 'SpO₂', data: spo2History, color: '#00ffd0' },
+          { name: 'Temperature', data: tempHistory, color: '#f7b801' }
+        ],
+        xaxis: { labels: { show: false } },
+        yaxis: { labels: { style: { colors: '#fff' } }, min: 50, max: 120 },
+        grid: { borderColor: 'rgba(255,255,255,0.1)' },
+        legend: { show: true, labels: { colors: '#fff' } },
+        tooltip: { theme: 'dark' },
+        stroke: { curve: 'smooth', width: 3 },
+        background: 'transparent',
+      });
+      apexTrendsChart.render();
+      // Gauges
+      const apexGaugeHR = new ApexCharts(document.querySelector("#apexGaugeHR"), {
+        chart: { type: 'radialBar', height: 180, sparkline: { enabled: true } },
+        series: [hrHistory[hrHistory.length-1]],
+        labels: ['Heart Rate'],
+        plotOptions: {
+          radialBar: {
+            hollow: { size: '60%' },
+            dataLabels: {
+              name: { show: true, color: '#4f8cff', fontSize: '1rem' },
+              value: { show: true, color: '#fff', fontSize: '1.5rem', offsetY: 8 }
+            }
+          }
+        },
+        colors: ['#4f8cff'],
+        fill: { type: 'gradient', gradient: { shade: 'dark', type: 'horizontal', stops: [0, 100], colorStops: [] } },
+        stroke: { lineCap: 'round' },
+        background: 'transparent',
+      });
+      apexGaugeHR.render();
+      const apexGaugeSpO2 = new ApexCharts(document.querySelector("#apexGaugeSpO2"), {
+        chart: { type: 'radialBar', height: 180, sparkline: { enabled: true } },
+        series: [spo2History[spo2History.length-1]],
+        labels: ['SpO₂'],
+        plotOptions: {
+          radialBar: {
+            hollow: { size: '60%' },
+            dataLabels: {
+              name: { show: true, color: '#00ffd0', fontSize: '1rem' },
+              value: { show: true, color: '#fff', fontSize: '1.5rem', offsetY: 8 }
+            }
+          }
+        },
+        colors: ['#00ffd0'],
+        fill: { type: 'gradient', gradient: { shade: 'dark', type: 'horizontal', stops: [0, 100], colorStops: [] } },
+        stroke: { lineCap: 'round' },
+        background: 'transparent',
+      });
+      apexGaugeSpO2.render();
+      // Sparklines
+      const hrSparkline = new Chart(document.getElementById('hrSparkline').getContext('2d'), {
+        type: 'line',
+        data: { labels: Array(30).fill(''), datasets: [{ data: hrHistory, borderColor: '#4f8cff', borderWidth: 2, pointRadius: 0, fill: false }] },
+        options: { responsive: false, plugins: { legend: { display: false } }, scales: { x: { display: false }, y: { display: false } } }
+      });
+      const spo2Sparkline = new Chart(document.getElementById('spo2Sparkline').getContext('2d'), {
+        type: 'line',
+        data: { labels: Array(30).fill(''), datasets: [{ data: spo2History, borderColor: '#00ffd0', borderWidth: 2, pointRadius: 0, fill: false }] },
+        options: { responsive: false, plugins: { legend: { display: false } }, scales: { x: { display: false }, y: { display: false } } }
+      });
+      const tempSparkline = new Chart(document.getElementById('tempSparkline').getContext('2d'), {
+        type: 'line',
+        data: { labels: Array(30).fill(''), datasets: [{ data: tempHistory, borderColor: '#f7b801', borderWidth: 2, pointRadius: 0, fill: false }] },
+        options: { responsive: false, plugins: { legend: { display: false } }, scales: { x: { display: false }, y: { display: false } } }
+      });
+      // Simulated data generator
+      let patientCounter = 1;
+      const patientNames = [
+        ["Ava Smith", "F"], ["Liam Johnson", "M"], ["Olivia Williams", "F"], ["Noah Brown", "M"], ["Emma Jones", "F"],
+        ["Elijah Garcia", "M"], ["Sophia Miller", "F"], ["Mason Davis", "M"], ["Isabella Martinez", "F"], ["Lucas Wilson", "M"],
+        ["Mia Anderson", "F"], ["Benjamin Thomas", "M"], ["Charlotte Lee", "F"], ["James Harris", "M"], ["Amelia Clark", "F"],
+        ["Henry Lewis", "M"], ["Harper Young", "F"], ["Alexander Walker", "M"], ["Evelyn Hall", "F"], ["Sebastian Allen", "M"],
+        ["Abigail King", "F"], ["Jack Wright", "M"], ["Emily Scott", "F"], ["Daniel Green", "M"], ["Elizabeth Adams", "F"],
+        ["Matthew Baker", "M"], ["Ella Nelson", "F"], ["Jackson Carter", "M"], ["Scarlett Mitchell", "F"], ["Aiden Perez", "M"],
+        ["Grace Roberts", "F"], ["Samuel Turner", "M"], ["Chloe Phillips", "F"], ["David Campbell", "M"], ["Penelope Parker", "F"],
+        ["Joseph Evans", "M"], ["Layla Edwards", "F"], ["Owen Collins", "M"], ["Victoria Stewart", "F"], ["Wyatt Sanchez", "M"],
+        ["Lily Morris", "F"], ["John Rogers", "M"], ["Zoey Reed", "F"], ["Julian Cook", "M"], ["Hannah Morgan", "F"],
+        ["Levi Bell", "M"], ["Nora Murphy", "F"], ["Gabriel Bailey", "M"], ["Aria Rivera", "F"], ["Carter Cooper", "M"]
+      ];
+
+      function generatePatientData() {
+        const idx = (patientCounter - 1) % patientNames.length;
+        const [name, gender] = patientNames[idx];
+        const patientId = 'P' + (patientCounter++).toString().padStart(4, '0');
+        const age = Math.floor(Math.random() * (90 - 18 + 1)) + 18;
+        const timestamp = new Date().toLocaleString();
+        const heartRate = Math.floor(Math.random() * (120 - 60 + 1)) + 60;
+        const spo2 = Math.floor(Math.random() * (100 - 95 + 1)) + 95;
+        const systolic = Math.floor(Math.random() * (140 - 100 + 1)) + 100;
+        const diastolic = Math.floor(Math.random() * (90 - 60 + 1)) + 60;
+        const bloodPressure = `${systolic}/${diastolic}`;
+        const temperature = (Math.random() * (37.5 - 36) + 36).toFixed(1);
+        return { patientId, name, gender, age, timestamp, heartRate, spo2, bloodPressure, temperature };
+      }
+      // Real-time update loop
+      function updateMetrics() {
+        const data = generatePatientData();
+        document.getElementById('patientId').textContent = data.patientId;
+        document.getElementById('patientName').textContent = data.name;
+        document.getElementById('gender').textContent = data.gender;
+        document.getElementById('age').textContent = data.age;
+        document.getElementById('timestamp').textContent = data.timestamp;
+        document.getElementById('bpValue').textContent = data.bloodPressure;
+
+        const hr = data.heartRate;
+        const spo2 = data.spo2;
+        const temp = parseFloat(data.temperature);
+
+        hrHistory.push(hr); hrHistory = hrHistory.slice(1);
+        spo2History.push(spo2); spo2History = spo2History.slice(1);
+        tempHistory.push(temp); tempHistory = tempHistory.slice(1);
+
+        animateNumber('hrValue', hr, 0);
+        animateNumber('spo2Value', spo2, 0);
+        animateNumber('tempValue', temp, 1);
+
+        apexTrendsChart.updateSeries([
+          { name: 'Heart Rate', data: hrHistory },
+          { name: 'SpO₂', data: spo2History },
+          { name: 'Temperature', data: tempHistory }
+        ]);
+
+        apexGaugeHR.updateSeries([Math.min(hr, 100)]);
+        apexGaugeSpO2.updateSeries([Math.min(spo2, 100)]);
+
+        hrSparkline.data.datasets[0].data = hrHistory;
+        hrSparkline.update('none');
+        spo2Sparkline.data.datasets[0].data = spo2History;
+        spo2Sparkline.update('none');
+        tempSparkline.data.datasets[0].data = tempHistory;
+        tempSparkline.update('none');
+
+        document.getElementById('hrStatus').textContent = hr < 60 ? 'Low' : hr > 100 ? 'High' : 'Normal';
+        document.getElementById('spo2Status').textContent = spo2 < 95 ? 'Low' : 'Normal';
+        document.getElementById('tempStatus').textContent = temp < 36.5 ? 'Low' : temp > 37.5 ? 'High' : 'Normal';
+      }
+      setInterval(updateMetrics, 2000);
+    });
+  </script>
+</body>
+</html>

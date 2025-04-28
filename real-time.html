@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Real-time Heart Rate Monitor</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body { 
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: #f0f2f5;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        .current-rate {
+            font-size: 72px;
+            text-align: center;
+            margin: 20px 0;
+            font-weight: bold;
+            color: #2c3e50;
+        }
+        .chart-container {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-top: 20px;
+            height: 400px;
+        }
+        .status {
+            text-align: center;
+            padding: 10px;
+            border-radius: 5px;
+            margin: 10px 0;
+            font-weight: bold;
+        }
+        .normal { background: #81c784; color: white; }
+        .elevated { background: #fff176; color: black; }
+        .high { background: #ef5350; color: white; }
+        .nav {
+            margin-bottom: 20px;
+        }
+        .nav a {
+            color: #2c3e50;
+            text-decoration: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="nav">
+            <a href="index.html">← Back to Dashboard</a>
+        </div>
+        <h1>Real-time Heart Rate Monitor</h1>
+        <div class="current-rate">-- BPM</div>
+        <div id="status" class="status normal">Normal Heart Rate</div>
+        <div class="chart-container">
+            <canvas id="realtimeChart"></canvas>
+        </div>
+    </div>
+
+    <script>
+        const ctx = document.getElementById('realtimeChart').getContext('2d');
+        const chart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: [],
+                datasets: [{
+                    label: 'Heart Rate (BPM)',
+                    data: [],
+                    borderColor: 'rgb(75, 192, 192)',
+                    tension: 0.3,
+                    fill: true,
+                    backgroundColor: 'rgba(75, 192, 192, 0.1)'
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        beginAtZero: false,
+                        min: 40,
+                        max: 120,
+                        grid: {
+                            color: 'rgba(0, 0, 0, 0.1)'
+                        }
+                    },
+                    x: {
+                        grid: {
+                            display: false
+                        }
+                    }
+                },
+                animation: {
+                    duration: 300
+                }
+            }
+        });
+
+        function updateStatus(rate) {
+            const statusDiv = document.getElementById('status');
+            if (rate < 60) {
+                statusDiv.className = 'status normal';
+                statusDiv.textContent = 'Normal Resting Heart Rate';
+            } else if (rate < 80) {
+                statusDiv.className = 'status normal';
+                statusDiv.textContent = 'Normal Active Heart Rate';
+            } else if (rate < 100) {
+                statusDiv.className = 'status elevated';
+                statusDiv.textContent = 'Elevated Heart Rate';
+            } else {
+                statusDiv.className = 'status high';
+                statusDiv.textContent = 'High Heart Rate';
+            }
+        }
+
+        function fetchData() {
+            const query = 'SELECT value FROM heart_rates WHERE time > now() - 30s ORDER BY time DESC LIMIT 30';
+            const url = `http://localhost:8086/query?db=healthtrend&u=admin&p=adminpassword&q=${encodeURIComponent(query)}`;
+
+            fetch(url)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.results[0].series) {
+                        const values = data.results[0].series[0].values;
+                        const times = values.map(v => new Date(v[0]).toLocaleTimeString());
+                        const heartRates = values.map(v => v[1]);
+
+                        // Update current rate
+                        document.querySelector('.current-rate').textContent = `${heartRates[0]} BPM`;
+                        updateStatus(heartRates[0]);
+
+                        // Update chart
+                        chart.data.labels = times.reverse();
+                        chart.data.datasets[0].data = heartRates.reverse();
+                        chart.update('none'); // Update without animation for smoother real-time updates
+                    }
+                })
+                .catch(error => console.error('Error:', error));
+        }
+
+        // Fetch data every second
+        setInterval(fetchData, 1000);
+        fetchData(); // Initial fetch
+    </script>
+</body>
+</html> 
